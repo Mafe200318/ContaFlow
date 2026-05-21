@@ -1,0 +1,36 @@
+version: "3.9"
+
+services:
+
+  # ── FastAPI Backend ─────────────────────────────────────────────────────────
+  backend:
+    build: ./backend
+    container_name: contaflow_api
+    restart: unless-stopped
+    env_file: ./backend/.env
+    environment:
+      - DATABASE_URL=sqlite:////data/contaflow.db
+    volumes:
+      - db_data:/data            # SQLite persiste entre reinicios
+    ports:
+      - "8000:8000"              # Expuesto solo para debug; en prod comentar esta línea
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ── React Frontend (Nginx) ──────────────────────────────────────────────────
+  frontend:
+    build: ./frontend
+    container_name: contaflow_web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  db_data:
